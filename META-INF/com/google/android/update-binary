@@ -1,5 +1,11 @@
 #!/sbin/sh
 
+# Start tracking and logging
+LOGFILE=/cache/dnscrypt_inst.log
+rm "${LOGFILE}"
+touch "${LOGFILE}"
+exec >> "${LOGFILE}" 2>&1
+
 # Detect whether in boot mode
 ps | grep zygote | grep -v grep >/dev/null && BOOTMODE=true || BOOTMODE=false
 
@@ -118,6 +124,24 @@ image_size_check() {
 
 # custom functions
 
+# Unmount and clean the unziped files before exit
+# Usage: safe_exit "1" "! Operation failed"
+safe_exit() {
+  rm -rf $MODPATH
+  umount $MOUNTPATH
+  losetup -d $LOOPDEVICE
+  rmdir $MOUNTPATH
+  if ! $BOOTMODE; then
+    umount /system
+    umount /vendor 2>/dev/null
+  fi
+  rm -rf $INSTALLER
+  if [ ! -z "$2"]; then
+    ui_print "$2"
+  fi
+  exit "$1"
+}
+
 set_separate_perm_recursive() {
   find $1 -type d 2>/dev/null | while read dir; do
     set_perm $dir $2 $3 $6 $8
@@ -125,82 +149,6 @@ set_separate_perm_recursive() {
   find $1 -type f 2>/dev/null | while read file; do
     set_perm $file $4 $5 $7 $9
   done
-}
-
-install_package() {
-  # Install/update Android package $APKNAME $PACKAGENAME
-  if [ -f "$MODPATH/system/app/${1%.apk}/$1" ]; then
-    ui_print "! ${1%.apk} is installed as system app"
-    rm -rf /data/app/${2}-*
-    # rm -rf /data/data/${2}
-
-  elif [ -f "$MODPATH/system/priv-app/${1%.apk}/$1" ]; then
-    ui_print "! ${1%.apk} is installed as system priv-app"
-    rm -rf /data/app/${2}-*
-    # rm -rf /data/data/${2}
-
-  elif [ -f "$INSTALLER/common/$1" ]; then
-    ui_print "- Installing ${1%.apk} into /data"
-    APKPATH="$2"-1
-    for i in `ls /data/app | grep "$2"-`; do
-      if [ `cat /data/system/packages.xml | grep $i >/dev/null 2>&1; echo $?` -eq 0 ]; then
-        APKPATH=$i
-        break;
-      fi
-    done
-    rm -rf /data/app/"$2"-*
-
-    ui_print "  target path: /data/app/$APKPATH"
-
-    mkdir -p /data/app/$APKPATH
-    chown 1000.1000 /data/app/$APKPATH
-    chmod 0755 /data/app/$APKPATH
-    chcon u:object_r:apk_data_file:s0 /data/app/$APKPATH
-
-    cp $INSTALLER/common/$1 /data/app/$APKPATH/base.apk
-    chown 1000.1000 /data/app/$APKPATH/base.apk
-    chmod 0644 /data/app/$APKPATH/base.apk
-    chcon u:object_r:apk_data_file:s0 /data/app/$APKPATH/base.apk
-
-    rm /data/$1 2>/dev/null
-
-    # enable xposed module
-    if [ ! -z "$3" -a "$3" == "xposed" ]; then
-      enable_xposed_package "$1" "$2" "/data/app/$APKPATH/base.apk"
-    fi
-
-  else
-    ui_print "! ${1%.apk} is not included, install it later by yourself"
-
-  fi
-}
-
-enable_xposed_package(){
-  # $1, apk name
-  # $2, full package location in /data/app/*.*.*/base.apk
-  if [ ! -d "/data/data/de.robv.android.xposed.installer" ]; then
-    ui_print "  Remember to enable ${1%.apk} in Xposed Installer later"
-  else
-    XPOSEDMODULES="/data/data/de.robv.android.xposed.installer/conf/modules.list"
-    XPOSEDENABLED="/data/data/de.robv.android.xposed.installer/conf/enabled_modules.list"
-    XPOSEDENABLEDXML="/data/data/de.robv.android.xposed.installer/shared_prefs/enabled_modules.xml"
-
-    if [ `cat $XPOSEDENABLED | grep "$2" >/dev/null 2>&1; echo $?` -ne 0 ]; then
-      ui_print "  Enabling Xposed module ${1%.apk}"
-      echo "$2" >> $XPOSEDENABLED
-      if [ `cat $XPOSEDENABLEDXML | grep "$2" >/dev/null 2>&1; echo $?` -ne 0 ]; then
-        if [ `cat $XPOSEDENABLEDXML | grep "<map>" >/dev/null 2>&1; echo $?` -eq 0 ]; then
-          sed -i "/<\/map>/ i \    <int name=\"${2}\" value=\"1\" \/>" $XPOSEDENABLEDXML
-        else
-          sed -i "s/<map \/>/<map>\n\    <int name=\"${2}\" value=\"1\" \/>\n<\/map>/" $XPOSEDENABLEDXML
-        fi
-      fi
-    fi
-
-    if [ `cat $XPOSEDMODULES | grep "$3" >/dev/null 2>&1; echo $?` -ne 0 ]; then
-      echo "$3" >> $XPOSEDMODULES
-    fi
-  fi
 }
 
 ##########################################################################################
@@ -293,14 +241,16 @@ else
   SDCARD=/sdcard
 fi
 
-MIRRDIR="/dev/magisk/mirror"
-MIRRSYS=$SYS
+MIRRDIR=""
 if $BOOTMODE; then
-  MIRRSYS=$MIRRDIR/system
+  MIRRDIR="/dev/magisk/mirror"
 fi
 
+MIRRSYS="$MIRRDIR$SYS"
+
+# Clean temporary files
+rm -rf $INSTALLER 2>/dev/null
 # unzip files into temperary folder $INSTALLER
-rm -rf $INSTALLER
 mkdir -p $INSTALLER
 cd $INSTALLER
 # unzip -o "$ZIP" common/* module.prop
@@ -409,13 +359,31 @@ if ! is_mounted $MOUNTPATH; then
   exit 1
 fi
 
+# #TODO: If we're upgrading in Magisk Manager, overwrite.
+UPGRADE=false
+$BOOTMODE && [ -d "/magisk/$MODID" ] && UPGRADE=true
+
+# Flashing zip twice for uninstallation, ONLY available in recovery
+if ! $BOOTMODE && [ -d "$MODPATH" ]; then
+  ui_print "- Removing module $MODPATH"
+  rm -rf $MODPATH
+  # rm /magisk/.core/post-fs-data.d/$CHECKERSCRIPT
+  # ui_print "  Removing apps in /data"
+  # rm -rf /data/app/${PACKAGENAME1}-*
+  # rm -rf /data/app/${PACKAGENAME2}-*
+  safe_exit 0 "- Done"
+else
+  ui_print "- Installing module $MODPATH"
+fi
+
+
 # Create mod paths
 # ui_print "- Cleaning conflicting apps in /data"
 # rm -rf /data/app/com.atmos-*
 # rm -rf /data/data/com.atmos
 # rm -rf /data/app/com.atmos.daxappUI-*
 # rm -rf /data/data/com.atmos.daxappUI
-rm -rf $MODPATH
+rm -rf $MODPATH 2>/dev/null
 
 # Create mod paths
 # empty folders will be deleted by magisk_mount.sh during boot
@@ -423,19 +391,36 @@ rm -rf $MODPATH
 mkdir -p $MODPATH$SYS
 # mkdir -p $MODPATH$SYS/vendor/etc
 
-# Handle removal files
-if [ -n "$REMOVAL" ]; then
+# Cleaning conflicts in /magisk
+if [ -n "$TESTREMOVAL" ]; then
+  ui_print "- Cleaning conflicts in /magisk"
+  for TARGET in $TESTREMOVAL; do
+    # for FILETYPE in d f l; do
+    for FILETYPE in d; do
+      RESULT=$(find /magisk/* -name "${TARGET##/*/}" -type "$FILETYPE" 2>/dev/null | grep -v $MODID | grep "$TARGET")
+      if [ ! -z "$RESULT" ]; then
+        for ITEM in $RESULT; do
+          ui_print "  $ITEM"
+          rm -rf "$ITEM"
+        done
+      fi
+    done
+  done
+fi
+
+# Handle removal files after test
+if [ -n "$TESTREMOVAL" ]; then
   ui_print "- Removing existing files systemlessly"
-  for TARGET in $REMOVAL; do
-    if [ -d "$TARGET" ]; then
-      mktouch $MODPATH$TARGET/.replace
-      ui_print "  removing folder $TARGET"
-    elif [ -f "$TARGET" ]; then
-      mktouch $MODPATH$TARGET
-      ui_print "  removing file $TARGET"
-    elif [ -L $TARGET ]; then
-      mktouch $MODPATH$TARGET
-      ui_print "  removing Symlink $TARGET"
+  for TARGET in $TESTREMOVAL; do
+    if [ -d "$MIRRDIR$TARGET" ]; then
+      ui_print "  $TARGET"
+      mktouch "$MODPATH$TARGET/.replace"
+    elif [ -f "$MIRRDIR$TARGET" ]; then
+      ui_print "  $TARGET"
+      mktouch "$MODPATH$TARGET"
+    elif [ -L "$MIRRDIR$TARGET" ]; then
+      ui_print "  $TARGET"
+      mktouch "$MODPATH$TARGET"
     else
       :
     fi

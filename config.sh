@@ -52,12 +52,12 @@ buildname="custom_build.prop"
 # buildname="system.prop"
 tweakname="tweak.prop"
 
-VERSION="v1.9.5-pre-20170420"
+VERSION="v1.9.5"
 REVISION="0.1"
 # APKNAME=*.apk
 # PACKAGENAME=*.*.*
 
-REMOVAL=
+TESTREMOVAL=
 
 ##########################################################################################
 # Installation Message
