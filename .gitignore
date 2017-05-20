@@ -1,3 +1,4 @@
 *.[oa]
 *~
 *.log
+script/*.sh

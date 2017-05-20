@@ -31,9 +31,9 @@ if [ ! -z "$SCRIPTLIST" ]; then
   done
 else
   chmod 755 $MODDIR/script/99dnscrypt
-  log_print "starting dnscypt"
+  log_print "running script 99dnscypt"
   /system/bin/sh "$MODDIR/script/99dnscrypt" &
 fi
 
+log_print "setting DNS as 127.0.0.1"
 "$RESETPROP" 'net.dns1' '127.0.0.1﻿'
-# "$RESETPROP" --file "$MODDIR/$buildname"
