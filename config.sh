@@ -29,15 +29,12 @@
 # Defines
 ##########################################################################################
 
-# NOTE: This part has to be adjusted to fit your own needs
-
-# This will be the folder name under /magisk or /cache/magisk
-# This should also be the same as the id in your module.prop to prevent confusion
-MODID=dnscrypt-proxy
-
 # Set to true if you need automount
 # Most mods would like it to be enabled
 AUTOMOUNT=true
+
+# Set to true if you need custom setprop script
+PROPFILE=false
 
 # Set to true if you need post-fs-data script
 POSTFSDATA=false
@@ -45,14 +42,16 @@ POSTFSDATA=false
 # Set to true if you need late_start service script
 LATESTARTSERVICE=true
 
-# Set to true if you need custom setprop script
-PROPFILE=false
+# This will be the folder name under /magisk or /cache/magisk
+# This should also be the same as the id in your module.prop to prevent confusion
+MODID=dnscrypt-proxy
+
 # personal file's name located anywhere on your internal storage
 buildname="custom_build.prop"
 # buildname="system.prop"
 tweakname="tweak.prop"
 
-VERSION="v1.9.5"
+VERSION="v1.9.6"
 REVISION="0.1"
 # APKNAME=*.apk
 # PACKAGENAME=*.*.*
@@ -72,6 +71,7 @@ print_modname() {
   ui_print "           $VERSION"
   ui_print " "
   ui_print "          by jedisct1          "
+  ui_print "     editied by cool00geek     "
   ui_print "*******************************"
   ui_print "  Magisk MOD by laggardkernel  "
 }
@@ -86,10 +86,6 @@ print_modname() {
 
 # This is an example
 REPLACE="
-/system/app/Youtube
-/system/priv-app/SystemUI
-/system/priv-app/Settings
-/system/framework
 "
 
 # Construct your own list here

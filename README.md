@@ -61,3 +61,4 @@ It might also soon be part of the [Cyanogen Mod](https://review.cyanogenmod.org/
 - [jedisct1](https://github.com/jedisct1), creator of [DNSCrypt](https://github.com/jedisct1/dnscrypt-proxy).
 - [qwerty12](https://forum.xda-developers.com/member.php?u=235313), for his great [guide of compiling dnscrypt-proxy for Android](https://forum.xda-developers.com/showpost.php?p=56068030&postcount=20).
 - [aschere](https://forum.xda-developers.com/member.php?u=5898631), for his updates of the AArch64 version — [\[GUIDE/MOD\] DNSCrypt for AArch64 (ZIP)](https://forum.xda-developers.com/nexus-5x/themes-apps/guide-dnscrypt-aarch64-t3302882).
+- [laggardkernel](https://github.com/laggardkernel/dnscrypt-proxy-magisk) for the original DNSCrypt-Proxy Magisk module

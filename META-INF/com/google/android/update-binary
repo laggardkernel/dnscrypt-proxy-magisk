@@ -8,13 +8,28 @@ exec >> "${LOGFILE}" 2>&1
 
 # Detect whether in boot mode
 ps | grep zygote | grep -v grep >/dev/null && BOOTMODE=true || BOOTMODE=false
+$BOOTMODE || ps -A 2>/dev/null | grep zygote | grep -v grep >/dev/null && BOOTMODE=true
+
+TMPDIR=/dev/tmp
+INSTALLER=$TMPDIR/install
+MAGISKBIN=/data/adb/magisk
 
 # Default permissions
 umask 022
 
+# echo before loading util_functions
+ui_print() { echo "$1"; }
+
 ##########################################################################################
 # Functions
 ##########################################################################################
+
+require_new_magisk() {
+  ui_print "*******************************"
+  ui_print " Please install Magisk v15.0+! "
+  ui_print "*******************************"
+  exit 1
+}
 
 ui_print() {
   if $BOOTMODE; then
@@ -260,6 +275,14 @@ unzip -o "$ZIP"
 # Main
 ##########################################################################################
 
+MIN_VER=`grep_prop minMagisk $INSTALLER/module.prop`
+[ ! -z $MAGISK_VER_CODE -a $MAGISK_VER_CODE -ge $MIN_VER ] || require_new_magisk
+
+# Utility functions must exist
+[ -f $MAGISKBIN/util_functions.sh ] || require_new_magisk
+# Load utility fuctions
+. $MAGISKBIN/util_functions.sh
+
 # Print mod name
 print_modname
 
@@ -353,11 +376,13 @@ else
   make_ext4fs -l ${SIZE}M -a /magisk -S $INSTALLER/common/file_contexts_image $IMG
 fi
 
-mount_image $IMG $MOUNTPATH
-if ! is_mounted $MOUNTPATH; then
-  ui_print "! $IMG mount failed... abort"
-  exit 1
-fi
+# This function will mount $IMG to $MOUNTPATH, and resize the image based on $reqSizeM
+mount_magisk_img
+#mount_image $IMG $MOUNTPATH
+#if ! is_mounted $MOUNTPATH; then
+#  ui_print "! $IMG mount failed... abort"
+#  exit 1
+#fi
 
 # #TODO: If we're upgrading in Magisk Manager, overwrite.
 UPGRADE=false
@@ -389,7 +414,6 @@ rm -rf $MODPATH 2>/dev/null
 # empty folders will be deleted by magisk_mount.sh during boot
 # mkdir -p $MODPATH
 mkdir -p $MODPATH$SYS
-# mkdir -p $MODPATH$SYS/vendor/etc
 
 # Cleaning conflicts in /magisk
 if [ -n "$TESTREMOVAL" ]; then
@@ -443,26 +467,11 @@ if [ -d "$INSTALLER/script" ]; then
   cp -af $INSTALLER/script $MODPATH
 fi
 
-# Copy selected lib
-# cp -af $LIBV4A $MODPATH/system/lib/soundfx/libv4a_fx_ics.so
-
-# Install package
-# install_package "$APKNAME" "$PACKAGENAME"
-
 # build property database patch for MOD by resetprop, through a
 # property file called "custom_build.prop" or any other name, default name system.prop
 if $PROPFILE; then
   cp -af "$INSTALLER/common/$buildname" "$MODPATH/$buildname"
 fi
-
-# Handle separate vendor partition replacement is
-# ONLY available on Magisk v10+. Below is no need anymore.
-# if [ -d "$MODPATH/vendor" ]; then
-#   cp -af $MODPATH/vendor /data/tmpvendor
-#   rm -rf $MODPATH/vendor
-#   cp -af /data/tmpvendor $MODPATH$SYS/vendor
-#   rm -rf /data/tmpvendor
-# fi
 
 # Handle replace folders
 for TARGET in $REPLACE; do
@@ -470,9 +479,7 @@ for TARGET in $REPLACE; do
 done
 
 # Auto Mount
-if $AUTOMOUNT; then
-  mktouch $MODPATH/auto_mount
-fi
+$AUTOMOUNT && touch $MODPATH/auto_mount
 
 # Module info
 cp -af $INSTALLER/module.prop $MODPATH/module.prop
@@ -497,9 +504,8 @@ set_permissions
 
 ui_print "- Unmounting partitions"
 
-umount $MOUNTPATH
-losetup -d $LOOPDEVICE
-rm -rf $MOUNTPATH
+# Unmount magisk image and shrink if possible
+unmount_magisk_img
 
 # Shrink the image if possible
 image_size_check $IMG

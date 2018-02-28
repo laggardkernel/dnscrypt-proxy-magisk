@@ -1,10 +1,11 @@
 id=dnscrypt-proxy
 name=DNSCrypt for Android
-version=v1.9.5
-versionCode=195
-author=jedisct1
+version=v1.9.6
+versionCode=196
+author=cool00geek
 description=DNSCrypt is a protocol that authenticates communications between a DNS client and a DNS resolver. It prevents DNS spoofing. It uses cryptographic signatures to verify that responses originate from the chosen DNS resolver and haven't been tampered with. Module adapted by laggardkernel.
-support=https://github.com/jedisct1/dnscrypt-proxy
+support=https://github.com/cool00geek/dnscrypt-proxy
 donate=https://dnscrypt.org/
 cacheModule=false
-template=3
+template=4
+minMagisk=1500
