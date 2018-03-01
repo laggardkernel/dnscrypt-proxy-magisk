@@ -48,7 +48,7 @@ It might also soon be part of the [Cyanogen Mod](https://review.cyanogenmod.org/
 ### Magisk Version Installation
 
 - Install [Magisk - Root & Universal Systemless Interface \[Android 5.0+\]](https://forum.xda-developers.com/apps/magisk/official-magisk-v7-universal-systemless-t3473445).
-- [Download the zip](https://github.com/laggardkernel/dnscrypt-proxy-magisk/releases) and flash it in Magisk Manager or in Recovery.
+- [Download the zip](https://github.com/cool00geek/dnscrypt-proxy-magisk/releases) and flash it in Magisk Manager or in Recovery.
 - zip file includes four architectures: arm, arm64, x86, x64.
 - Script in `/magisk/dnscrypt-proxy/script`, default `99dnscrypt`, will be excuted to start dnscrypt-proxy as init script. If other scripts exist there, `99dnscrypt` will be ignored.
 
