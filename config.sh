@@ -1,9 +1,7 @@
 ##########################################################################################
 #
-# Magisk
+# Magisk Module Template Config Script
 # by topjohnwu
-#
-# This is a template zip for developers
 #
 ##########################################################################################
 ##########################################################################################
@@ -12,16 +10,10 @@
 #
 # 1. Place your files into system folder
 # 2. Fill in all sections in this file
-# 3. For advanced features, add commands into the script files under common:
-#    post-fs.sh, post-fs-data.sh, service.sh
-# 4. Change the "module.prop" under common with the info of your module
-#
-##########################################################################################
-##########################################################################################
-#
-# Limitations:
-# 1. Can not place any new items under /system root!! e.g. /system/newfile, /system/newdir
-#    Magisk will delete these items at boot.
+# 3. Configure the settings in this file (common/config.sh)
+# 4. For advanced features, add shell commands into the script files under common:
+#    post-fs-data.sh, service.sh
+# 5. For changing props, add your additional/modified props into common/system.prop
 #
 ##########################################################################################
 
@@ -53,10 +45,6 @@ tweakname="tweak.prop"
 
 VERSION="v1.9.6"
 REVISION="0.1"
-# APKNAME=*.apk
-# PACKAGENAME=*.*.*
-
-TESTREMOVAL=
 
 ##########################################################################################
 # Installation Message
@@ -106,25 +94,8 @@ set_permissions() {
     set_perm_recursive  $MODPATH/system/bin  0  2000  0755  0755
   fi
 
-  # bin_mount binaries to /system/bin is broken, do it manually
-  # if [ -d "$MODPATH/system/bin" ]; then
-  #   ui_print "- Changing bin binaries mount method as manual"
-  #   mv -f "$MODPATH/system/bin" "$MODPATH/bin"
-  #   set_perm_recursive  $MODPATH/bin  0  2000  0755  0755
-  #   # Touch an empty "enable" file as switch
-  #   mkdir -p $MODPATH/bin_bind
-  #   touch $MODPATH/bin_bind/enable
-  # fi
-
   if [ -d "$MODPATH$SYS/xbin" ]; then
     set_perm_recursive  $MODPATH$SYS/xbin  0  2000  0755  0755
-  fi
-
-  if [ -f "$MODPATH$SYS/vendor" ]; then
-    set_separate_perm_recursive $MODPATH$SYS/vendor 0 2000 0 0 0755 0644
-    if [ -f "$MODPATH$SYS/vendor/bin" ]; then
-      set_perm_recursive $MODPATH$SYS/vendor/bin 0 2000 0755 0755
-    fi
   fi
 
   if [ -d "$MODPATH/script" ]; then

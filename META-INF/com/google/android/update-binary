@@ -1,28 +1,66 @@
 #!/sbin/sh
 
-# Start tracking and logging
-LOGFILE=/cache/dnscrypt_inst.log
-rm "${LOGFILE}"
-touch "${LOGFILE}"
-exec >> "${LOGFILE}" 2>&1
-
 # Detect whether in boot mode
 ps | grep zygote | grep -v grep >/dev/null && BOOTMODE=true || BOOTMODE=false
 $BOOTMODE || ps -A 2>/dev/null | grep zygote | grep -v grep >/dev/null && BOOTMODE=true
 
+# This path should work in any cases
 TMPDIR=/dev/tmp
+MOUNTPATH=/magisk
+IMG=/data/magisk.img
+if $BOOTMODE; then
+  MOUNTPATH=/dev/magisk_merge
+  IMG=/data/magisk_merge.img
+fi
 INSTALLER=$TMPDIR/install
-MAGISKBIN=/data/adb/magisk
+MAGISKBIN=/data/magisk
 
 # Default permissions
 umask 022
+
+# Initial cleanup
+rm -rf $TMPDIR 2>/dev/null
+mkdir -p $INSTALLER
 
 # echo before loading util_functions
 ui_print() { echo "$1"; }
 
 ##########################################################################################
+# Env
+##########################################################################################
+
+OUTFD=$2
+ZIP=$3
+
+ui_print "- Mounting /system, /vendor, /data, /cache"
+mount -o ro /system 2>/dev/null
+mount -o ro /vendor 2>/dev/null
+mount /data 2>/dev/null
+mount /cache 2>/dev/null
+
+# Utility functions must exist
+[ -f $MAGISKBIN/util_functions.sh ] || require_new_magisk
+# Load utility fuctions
+. $MAGISKBIN/util_functions.sh
+get_outfd # I don't know what this does
+
+if $BOOTMODE && ! is_mounted /magisk; then
+  ui_print "! Magisk is not activated!... abort"
+  exit 1
+fi
+
+if [ ! -f '/system/build.prop' ]; then
+  ui_print "! Failed: /system could not be mounted!"
+  exit 1
+fi
+
+$BOOTMODE && boot_actions || recovery_actions
+
+
+##########################################################################################
 # Functions
 ##########################################################################################
+
 
 require_new_magisk() {
   ui_print "*******************************"
@@ -170,47 +208,32 @@ set_separate_perm_recursive() {
 # Flashable update-binary preparation
 ##########################################################################################
 
-OUTFD=$2
-ZIP=$3
+#readlink /proc/$$/fd/$OUTFD 2>/dev/null | grep /tmp >/dev/null
+#if [ "$?" -eq "0" ]; then
+  #OUTFD=0
+#
+  #for FD in `ls /proc/$$/fd`; do
+    #readlink /proc/$$/fd/$FD 2>/dev/null | grep pipe >/dev/null
+    #if [ "$?" -eq "0" ]; then
+      #ps | grep " 3 $FD " | grep -v grep >/dev/null
+      #if [ "$?" -eq "0" ]; then
+        #OUTFD=$FD
+        #break
+      #fi
+    #fi
+  #done
+#fi
 
-readlink /proc/$$/fd/$OUTFD 2>/dev/null | grep /tmp >/dev/null
-if [ "$?" -eq "0" ]; then
-  OUTFD=0
 
-  for FD in `ls /proc/$$/fd`; do
-    readlink /proc/$$/fd/$FD 2>/dev/null | grep pipe >/dev/null
-    if [ "$?" -eq "0" ]; then
-      ps | grep " 3 $FD " | grep -v grep >/dev/null
-      if [ "$?" -eq "0" ]; then
-        OUTFD=$FD
-        break
-      fi
-    fi
-  done
-fi
-
-if $BOOTMODE && ! is_mounted /magisk; then
-  ui_print "! Magisk is not activated!... abort"
-  exit 1
-fi
 
 # Fix SuperSU.....
-$BOOTMODE && $BINDIR/sepolicy-inject --live "allow fsck * * *"
+#$BOOTMODE && $BINDIR/sepolicy-inject --live "allow fsck * * *"
 
-# This path should work in any cases
-TMPDIR=/dev/tmp
 
-MOUNTPATH=/magisk
-IMGNAME=magisk.img
-
-if $BOOTMODE; then
-  MOUNTPATH=/dev/magisk_merge
-  IMGNAME=magisk_merge.img
-fi
 
 mkdir -p $TMPDIR 2>/dev/null
 cd $TMPDIR
-unzip -o "$ZIP" config.sh
+unzip -o "$ZIP" module.prop config.sh 'common/*'
 
 if [ ! -f "config.sh" ]; then
   ui_print "! Failed: Unable to extract zip file!"
@@ -218,6 +241,15 @@ if [ ! -f "config.sh" ]; then
 fi
 
 source config.sh
+
+# Check the min magisk version
+MIN_VER=`grep_prop template $INSTALLER/module.prop`
+[ ! -z $MAGISK_VER_CODE -a $MAGISK_VER_CODE -ge $MIN_VER ] || require_new_magisk
+MODID=`grep_prop id $INSTALLER/module.prop`
+MODPATH=$MOUNTPATH/$MODID
+
+# Print mod name
+print_modname
 
 INSTALLER=$TMPDIR/$MODID
 MODPATH=$MOUNTPATH/$MODID
@@ -278,10 +310,7 @@ unzip -o "$ZIP"
 MIN_VER=`grep_prop minMagisk $INSTALLER/module.prop`
 [ ! -z $MAGISK_VER_CODE -a $MAGISK_VER_CODE -ge $MIN_VER ] || require_new_magisk
 
-# Utility functions must exist
-[ -f $MAGISKBIN/util_functions.sh ] || require_new_magisk
-# Load utility fuctions
-. $MAGISKBIN/util_functions.sh
+
 
 # Print mod name
 print_modname
@@ -291,28 +320,18 @@ ui_print "******************************"
 ui_print "Powered by Magisk (@topjohnwu)"
 ui_print "******************************"
 
-ui_print "- Mounting /system(ro), /vendor(ro), /data, /cache"
-mount -o ro /system 2>/dev/null
-mount -o ro /vendor 2>/dev/null
-mount /data 2>/dev/null
-mount /cache 2>/dev/null
-
-if [ ! -f '/system/build.prop' ]; then
-  ui_print "! Failed: /system could not be mounted!"
-  exit 1
-fi
-
-API=`grep_prop ro.build.version.sdk`
+api_level_arch_detect
+#API=`grep_prop ro.build.version.sdk`
 ABI=`grep_prop ro.product.cpu.abi | cut -c-3`
 ABI2=`grep_prop ro.product.cpu.abi2 | cut -c-3`
 ABILONG=`grep_prop ro.product.cpu.abi`
 
-ARCH=arm
+#ARCH=arm
 IS64BIT=false
-if [ "$ABI" = "x86" ]; then ARCH=x86; fi;
-if [ "$ABI2" = "x86" ]; then ARCH=x86; fi;
-if [ "$ABILONG" = "arm64-v8a" ]; then ARCH=arm64; IS64BIT=true; fi;
-if [ "$ABILONG" = "x86_64" ]; then ARCH=x64; IS64BIT=true; fi;
+#if [ "$ABI" = "x86" ]; then ARCH=x86; fi;
+#if [ "$ABI2" = "x86" ]; then ARCH=x86; fi;
+if [ "$ABILONG" = "arm64-v8a" ]; then IS64BIT=true; fi;
+if [ "$ABILONG" = "x86_64" ]; then IS64BIT=true; fi;
 
 PRODUCT=$(grep_prop ro.build.product $BUILDPROP)
 if [ -z "$PRODUCT" ]; then
@@ -334,21 +353,27 @@ else
   ui_print "- Magisk supports SDK $API. Compatible."
 fi
 
+# Check the min magisk version
+MIN_VER=`grep_prop template $INSTALLER/module.prop`
+[ ! -z $MAGISK_VER_CODE -a $MAGISK_VER_CODE -ge $MIN_VER ] || require_new_magisk
+MODID=`grep_prop id $INSTALLER/module.prop`
+MODPATH=$MOUNTPATH/$MODID
+
+# Print mod name
+print_modname
+
 # LIBV4A=$INSTALLER/Supported/viper/libv4a_fx_jb_NEON.so
 # if [ "$ARCH" = "x86" -o "$ARCH" = "x64" ]; then
 #   LIBV4A=$INSTALLER/Supported/viper/libv4a_fx_jb_X86.so
 # fi
 
-IMG=
 if is_mounted /data; then
-  IMG=/data/$IMGNAME
   if [ ! -f "/data/magisk.img" ]; then
     ui_print "! Magisk is not installed!"
     ui_print "! Magisk is required for this mod!"
     exit 1
   fi
 else
-  IMG=/cache/magisk.img
   ui_print " "
   ui_print "***********************************"
   ui_print "*      !! Data unavailible !!     *"
@@ -363,17 +388,17 @@ fi
 request_size_check "$ZIP"
 
 if [ -f "$IMG" ]; then
-  ui_print "- $IMG detected!"
+  ui_print "- Found $IMG"
   image_size_check $IMG
   if [ "$reqSizeM" -gt "$curFreeM" ]; then
-    SIZE=$(((reqSizeM + curUsedM) / 32 * 32 + 64))
-    ui_print "- Resizing $IMG to ${SIZE}M..."
-    resize2fs $IMG ${SIZE}M
+    newSizeM=$(((reqSizeM + curUsedM) / 32 * 32 + 64))
+    ui_print "- Resizing $IMG to ${newSizeM}M"
+    $MAGISKBIN/magisk --resizeimg $IMG $newSizeM
   fi
 else
-  SIZE=$((reqSizeM / 32 * 32 + 64));
-  ui_print "- Creating $IMG with size ${SIZE}M"
-  make_ext4fs -l ${SIZE}M -a /magisk -S $INSTALLER/common/file_contexts_image $IMG
+  newSizeM=$((reqSizeM / 32 * 32 + 64));
+  ui_print "- Creating $IMG with size ${newSizeM}M"
+  $MAGISKBIN/magisk --createimg $IMG $newSizeM
 fi
 
 # This function will mount $IMG to $MOUNTPATH, and resize the image based on $reqSizeM
@@ -502,23 +527,19 @@ fi
 ui_print "- Setting permissions"
 set_permissions
 
-ui_print "- Unmounting partitions"
-
-# Unmount magisk image and shrink if possible
-unmount_magisk_img
+$MAGISKBIN/magisk --umountimg $MOUNTPATH $MAGISKLOOP
+rmdir $MOUNTPATH
 
 # Shrink the image if possible
 image_size_check $IMG
-NEWDATASIZE=$((curUsedM / 32 * 32 + 32))
-if [ "$curSizeM" -gt "$NEWDATASIZE" ]; then
-  ui_print "- Shrinking $IMG to ${NEWDATASIZE}M...";
-  resize2fs $IMG ${NEWDATASIZE}M;
+newSizeM=$((curUsedM / 32 * 32 + 64))
+if [ $curSizeM -gt $newSizeM ]; then
+  ui_print "- Shrinking $IMG to ${newSizeM}M"
+  $MAGISKBIN/magisk --resizeimg $IMG $newSizeM
 fi
 
-if ! $BOOTMODE; then
-  umount /system
-  umount /vendor 2>/dev/null
-fi
+$BOOTMODE || recovery_cleanup
+rm -rf $TMPDIR
 
 ui_print "- Done"
 exit 0
