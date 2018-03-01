@@ -208,28 +208,6 @@ set_separate_perm_recursive() {
 # Flashable update-binary preparation
 ##########################################################################################
 
-#readlink /proc/$$/fd/$OUTFD 2>/dev/null | grep /tmp >/dev/null
-#if [ "$?" -eq "0" ]; then
-  #OUTFD=0
-#
-  #for FD in `ls /proc/$$/fd`; do
-    #readlink /proc/$$/fd/$FD 2>/dev/null | grep pipe >/dev/null
-    #if [ "$?" -eq "0" ]; then
-      #ps | grep " 3 $FD " | grep -v grep >/dev/null
-      #if [ "$?" -eq "0" ]; then
-        #OUTFD=$FD
-        #break
-      #fi
-    #fi
-  #done
-#fi
-
-
-
-# Fix SuperSU.....
-#$BOOTMODE && $BINDIR/sepolicy-inject --live "allow fsck * * *"
-
-
 
 mkdir -p $TMPDIR 2>/dev/null
 cd $TMPDIR
@@ -245,7 +223,6 @@ ui_print "- Loading new config"
 
 # Check the min magisk version
 MIN_VER=`grep_prop template ./module.prop`
-ui_print "$MAGISK_VER_CODE $MIN_VER"
 [ $MAGISK_VER_CODE -ge $MIN_VER ] || require_new_magisk
 MODID=`grep_prop id $INSTALLER/module.prop`
 MODPATH=$MOUNTPATH/$MODID
@@ -253,6 +230,10 @@ ui_print "- Magisk version passed"
 
 # Print mod name
 print_modname
+# Please leave this message in your flashable zip for credits :)
+ui_print "******************************"
+ui_print "Powered by Magisk (@topjohnwu)"
+ui_print "******************************"
 
 INSTALLER=$TMPDIR/$MODID
 MODPATH=$MOUNTPATH/$MODID
@@ -310,18 +291,15 @@ unzip -o "$ZIP"
 # Main
 ##########################################################################################
 
-MIN_VER=`grep_prop minMagisk $INSTALLER/module.prop`
-[ ! -z $MAGISK_VER_CODE -a $MAGISK_VER_CODE -ge $MIN_VER ] || require_new_magisk
-
-
-
-# Print mod name
-print_modname
-
-# Please leave this message in your flashable zip for credits :)
-ui_print "******************************"
-ui_print "Powered by Magisk (@topjohnwu)"
-ui_print "******************************"
+# You can get the Android API version from $API, the CPU architecture from $ARCH
+# Useful if you are creating Android version / platform dependent mods
+ui_print "- Checking compatibility"
+if [ "$API" -lt "21" ]; then
+  ui_print "! Magisk ONLY supports Lollipop 5.0+ (SDK 21+)"
+  exit 1
+else
+  ui_print "- Magisk supports SDK $API. Compatible."
+fi
 
 api_level_arch_detect
 #API=`grep_prop ro.build.version.sdk`
@@ -346,29 +324,8 @@ fi
 
 BRAND=$(grep_prop ro.product.brand $BUILDPROP)
 
-# You can get the Android API version from $API, the CPU architecture from $ARCH
-# Useful if you are creating Android version / platform dependent mods
-ui_print "- Checking compatibility"
-if [ "$API" -lt "21" ]; then
-  ui_print "! Magisk ONLY supports Lollipop 5.0+ (SDK 21+)"
-  exit 1
-else
-  ui_print "- Magisk supports SDK $API. Compatible."
-fi
-
-# Check the min magisk version
-MIN_VER=`grep_prop template $INSTALLER/module.prop`
-[ ! -z $MAGISK_VER_CODE -a $MAGISK_VER_CODE -ge $MIN_VER ] || require_new_magisk
 MODID=`grep_prop id $INSTALLER/module.prop`
 MODPATH=$MOUNTPATH/$MODID
-
-# Print mod name
-print_modname
-
-# LIBV4A=$INSTALLER/Supported/viper/libv4a_fx_jb_NEON.so
-# if [ "$ARCH" = "x86" -o "$ARCH" = "x64" ]; then
-#   LIBV4A=$INSTALLER/Supported/viper/libv4a_fx_jb_X86.so
-# fi
 
 if is_mounted /data; then
   if [ ! -f "/data/magisk.img" ]; then
@@ -544,5 +501,4 @@ fi
 $BOOTMODE || recovery_cleanup
 rm -rf $TMPDIR
 
-ui_print "- Done"
 exit 0
