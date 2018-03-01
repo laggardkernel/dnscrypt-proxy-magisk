@@ -240,13 +240,16 @@ if [ ! -f "config.sh" ]; then
   exit 1
 fi
 
-source config.sh
+ui_print "- Loading new config"
+. ./config.sh
 
 # Check the min magisk version
-MIN_VER=`grep_prop template $INSTALLER/module.prop`
-[ ! -z $MAGISK_VER_CODE -a $MAGISK_VER_CODE -ge $MIN_VER ] || require_new_magisk
+MIN_VER=`grep_prop template ./module.prop`
+ui_print "$MAGISK_VER_CODE $MIN_VER"
+[ $MAGISK_VER_CODE -ge $MIN_VER ] || require_new_magisk
 MODID=`grep_prop id $INSTALLER/module.prop`
 MODPATH=$MOUNTPATH/$MODID
+ui_print "- Magisk version passed"
 
 # Print mod name
 print_modname
