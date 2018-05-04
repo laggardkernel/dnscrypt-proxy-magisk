@@ -43,7 +43,7 @@ buildname="custom_build.prop"
 # buildname="system.prop"
 tweakname="tweak.prop"
 
-VERSION="v1.9.7"
+VERSION="v2.0.11"
 REVISION="0.1"
 
 ##########################################################################################

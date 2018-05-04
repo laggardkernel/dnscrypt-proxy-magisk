@@ -1,4 +1,10 @@
 # Changelog
 
+## v2.0.11
+- Use dnscrypt-proxy v2
+
+## v 1.9.7
+- Update to follow requirements for Magisk 16+
+
 ## v 1.9.6
 - Update template to follow v4 (Magisk 15+)
