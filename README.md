@@ -1,3 +1,5 @@
+Obsolete repo. Use [the other one](https://github.com/Magisk-Modules-Repo/dnscrypt-proxy-magisk) from official Magisk-Modules-Repo instead.
+
 # DNSCrypt for Android
 
 ### DNSCrypt
@@ -39,7 +41,7 @@ Relevant discussions:
 
 - [Starting the daemon on Android](https://github.com/jedisct1/dnscrypt-proxy/issues/98#issuecomment-62636551)
 - [How to install DNSCrypt on Android](http://forum.xda-developers.com/showthread.php?t=2793092)
-- [\[GUIDE/MOD\] DNSCrypt for AArch64 (ZIP)](https://forum.xda-developers.com/nexus-5x/themes-apps/guide-dnscrypt-aarch64-t3302882) 
+- [\[GUIDE/MOD\] DNSCrypt for AArch64 (ZIP)](https://forum.xda-developers.com/nexus-5x/themes-apps/guide-dnscrypt-aarch64-t3302882)
 
 The dnscrypt-proxy source code can be cross-compiled for Android using the provided `dist-build/android*.sh` scripts.
 
@@ -54,7 +56,7 @@ It might also soon be part of the [Cyanogen Mod](https://review.cyanogenmod.org/
 
 ### Support
 
-- [\[GUIDE/MOD\] DNSCrypt for AArch64 (ZIP)](https://forum.xda-developers.com/nexus-5x/themes-apps/guide-dnscrypt-aarch64-t3302882) 
+- [\[GUIDE/MOD\] DNSCrypt for AArch64 (ZIP)](https://forum.xda-developers.com/nexus-5x/themes-apps/guide-dnscrypt-aarch64-t3302882)
 
 ### Credit
 
