@@ -1,5 +1,7 @@
 # DNSCrypt for Android
 
+## ABANDONED! Please use [this version](https://github.com/Magisk-Modules-Repo/dnscrypt-proxy-magisk) instead!!!
+
 ### DNSCrypt
 
 DNSCrypt is a protocol that authenticates communications between a DNS client and a DNS resolver. It prevents DNS spoofing. It uses cryptographic signatures to verify that responses originate from the chosen DNS resolver and haven't been tampered with.
