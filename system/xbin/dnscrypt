@@ -2,8 +2,8 @@
 
 if [ "x${1}" = "xenable" -o "x${1}" = "xENABLE" ]; then
         echo "Enabling dnscrypt-proxy..."
-        iptables -t nat -A OUTPUT -p udp --dport 53 -j DNAT --to-destination 127.0.0.1
-        iptables -t nat -A OUTPUT -p tcp --dport 53 -j DNAT --to-destination 127.0.0.1
+        iptables -t nat -D OUTPUT -p udp --dport 53 -j DNAT --to-destination 127.0.0.1
+        iptables -t nat -D OUTPUT -p tcp --dport 53 -j DNAT --to-destination 127.0.0.1
         kill $(cat /data/local/tmp/dnscrypt-proxy.pid)
         MODDIR=/magisk/dnscrypt-proxy
         SCRIPTLIST=`find $MODDIR/script -maxdepth 1 -type f ! -name "99dnscrypt" 2>/dev/null | sort -d`

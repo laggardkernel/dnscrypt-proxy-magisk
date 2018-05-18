@@ -14,6 +14,7 @@ changelog.txt text eol=lf
 file_contexts_image text eol=lf
 update-binary text eol=lf
 updater-script text eol=lf
+script/** text eol=lf
 
 *.sln text eol=lf
 *.txt text eol=lf
